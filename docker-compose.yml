@@ -1,0 +1,23 @@
+# StyleGraph (MMKG) 专属分组：容器/卷均挂在 mmkg 项目命名空间下
+# 复用本地已有 neo4j:5.26 镜像（与 DevMind 共享），避免重复拉取
+name: mmkg
+
+services:
+  neo4j:
+    image: neo4j:5.26
+    container_name: mmkg-neo4j
+    ports:
+      - "7474:7474"   # HTTP Browser
+      - "7687:7687"   # Bolt
+    environment:
+      NEO4J_AUTH: neo4j/${NEO4J_PASSWORD:-mmkg_dev_2026}
+      NEO4J_server_memory_heap_max__size: 1G
+      NEO4J_server_memory_pagecache_size: 512M
+    volumes:
+      - neo4j_data:/data
+      - neo4j_logs:/logs
+    restart: unless-stopped
+
+volumes:
+  neo4j_data:
+  neo4j_logs:

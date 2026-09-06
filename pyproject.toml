@@ -1,0 +1,72 @@
+[project]
+name = "mmkg"
+version = "0.1.0"
+description = "StyleGraph（MMKG）— 电商多模态知识图谱平台：VLM 抽取 + Neo4j 图谱 + 多模态检索（以图搜款/搭配推荐/导购问答）"
+readme = "README.md"
+requires-python = ">=3.12,<3.14"
+dependencies = [
+    # Web / API
+    "fastapi>=0.115.0",
+    "uvicorn>=0.30.0",
+    "python-multipart>=0.0.9",
+    # 配置 / CLI / 日志
+    "pydantic-settings>=2.4.0",
+    "typer>=0.12.0",
+    "rich>=13.7.0",
+    "python-dotenv>=1.0.1",
+    # 图数据库
+    "neo4j>=5.23.0",
+    # 数据集与下载
+    "datasets>=2.20.0",
+    "huggingface-hub>=0.24.0",
+    "httpx>=0.27.0",
+    "tenacity>=8.5.0",
+    # 多模态向量（torch 走本地 uv 缓存，与 DevMind-AI-test / sentiment-plus 同版本，零下载）
+    "torch==2.13.0+cu130",
+    "torchvision>=0.20",
+    "open-clip-torch>=2.26.0",
+    "pillow>=10.4.0",
+    "imagehash>=4.3.1",
+    "numpy>=1.26.0",
+]
+
+[project.scripts]
+mmkg = "mmkg.cli:main"
+
+[tool.uv]
+package = true
+
+[tool.uv.sources]
+torch = [{ index = "pytorch-cu130" }]
+torchvision = [{ index = "pytorch-cu130" }]
+
+# 国内镜像作为默认源（uv 不读 pip.ini，需在此显式声明）；海外环境可删掉本段
+[[tool.uv.index]]
+name = "pypi-mirror"
+url = "https://mirrors.aliyun.com/pypi/simple"
+default = true
+
+[[tool.uv.index]]
+name = "pytorch-cu130"
+url = "https://download.pytorch.org/whl/cu130"
+explicit = true
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0.0",
+    "ruff>=0.5.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/mmkg"]
+
+[tool.ruff]
+line-length = 100
+src = ["src", "tests"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
