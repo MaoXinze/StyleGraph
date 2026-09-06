@@ -21,3 +21,6 @@ web/dist/
 # 运行产物
 *.log
 runs/
+
+# ZCode 会话产物
+.zcode/
