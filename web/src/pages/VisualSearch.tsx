@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react'
 import { api, type ProductCard as ProductCardType, type SearchHit } from '../api'
+import PageHeader from '../components/PageHeader'
 import ProductCard from '../components/ProductCard'
 
 function UploadIcon() {
@@ -68,12 +69,11 @@ export default function VisualSearch() {
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-xl font-semibold tracking-tight text-ink">以图搜款</h1>
-        <p className="mt-1 text-sm text-ink-soft">
-          上传一张商品图，按 CLIP 视觉向量找出全库同风格单品
-        </p>
-      </div>
+      <PageHeader
+        title="以图搜款"
+        en="Visual Search"
+        desc="上传一张商品图，按 CLIP 视觉向量找出全库同风格单品"
+      />
 
       <div className="grid gap-6 lg:grid-cols-[1fr_300px]">
         <div>

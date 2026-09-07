@@ -105,15 +105,15 @@ export default function ProductDetail() {
             </div>
           )}
           {d.attributes.length > 0 && (
-            <div className="flex flex-wrap gap-2">
-              {d.attributes.map((a) => (
-                <span
-                  key={a.facet + a.value}
-                  className="rounded-md border border-line bg-white px-2.5 py-1 text-xs text-ink-soft"
-                >
-                  <span className="text-ink-faint">{a.facet}</span> {a.value}
-                </span>
-              ))}
+            <div className="overflow-hidden rounded-xl border border-line-soft bg-white">
+              <div className="divide-y divide-line-soft">
+                {d.attributes.map((a) => (
+                  <div key={a.facet + a.value} className="flex items-baseline justify-between px-4 py-2.5">
+                    <span className="text-xs text-ink-faint">{a.facet}</span>
+                    <span className="text-sm text-ink">{a.value}</span>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
         </div>

@@ -48,7 +48,13 @@ async function json<T>(res: Response): Promise<T> {
 
 export const api = {
   stats: () =>
-    fetch('/api/stats').then((r) => json<{ nodes: Record<string, number>; rels: Record<string, number> }>(r)),
+    fetch('/api/stats').then((r) =>
+      json<{
+        nodes: Record<string, number>
+        rels: Record<string, number>
+        server: { name?: string; versions?: string[] }
+      }>(r),
+    ),
 
   featured: (limit = 10) =>
     fetch(`/api/products/featured?limit=${limit}`).then((r) => json<{ products: ProductCard[] }>(r)),

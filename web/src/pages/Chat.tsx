@@ -51,9 +51,12 @@ export default function Chat() {
       <div className="flex-1 space-y-7 overflow-y-auto pb-4">
         {turns.length === 0 && (
           <div className="rise pt-16 text-center">
-            <h1 className="text-[22px] font-semibold tracking-tight text-ink">
-              说说你的需求，我来挑
-            </h1>
+            <div className="flex items-baseline justify-center gap-2.5">
+              <h1 className="text-[22px] font-semibold tracking-tight text-ink">
+                说说你的需求，我来挑
+              </h1>
+              <span className="text-xs text-ink-faint">Shopping Q&A</span>
+            </div>
             <p className="mt-2 text-sm text-ink-soft">从场景、预算、风格任意角度描述</p>
             <div className="mt-7 flex flex-wrap justify-center gap-2">
               {SUGGESTIONS.map((s) => (
