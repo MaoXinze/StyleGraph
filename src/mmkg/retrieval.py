@@ -17,13 +17,15 @@ CALL db.index.vector.queryNodes('product_image_vec', $k, $vec)
 YIELD node, score
 WHERE ($facet_key IS NULL OR EXISTS {
   MATCH (node)-[:HAS_ATTRIBUTE]->(a:AttributeValue) WHERE a.key = $facet_key })
-RETURN node{.*} AS product, score ORDER BY score DESC LIMIT $k
+RETURN node{.asin, .title, .price, .rating, .rating_count, .image_url, .store} AS product,
+       score ORDER BY score DESC LIMIT $k
 """
 
 _TEXT_SEARCH = """
 CALL db.index.vector.queryNodes('product_text_vec', $k, $vec)
 YIELD node, score
-RETURN node{.*} AS product, score ORDER BY score DESC LIMIT $k
+RETURN node{.asin, .title, .price, .rating, .rating_count, .image_url, .store} AS product,
+       score ORDER BY score DESC LIMIT $k
 """
 
 # 搭配推荐：直接共购 + 类目亲和两跳扩展，Python 侧融合排序
@@ -75,7 +77,8 @@ ORDER BY p.rating_count DESC LIMIT 12
 _FALLBACK_TEXT_QUERY = """
 CALL db.index.vector.queryNodes('product_text_vec', 12, $vec)
 YIELD node, score
-RETURN node{.*} AS product, score ORDER BY score DESC
+RETURN node{.asin, .title, .price, .rating, .rating_count, .image_url, .store} AS product,
+       score ORDER BY score DESC
 """
 
 
