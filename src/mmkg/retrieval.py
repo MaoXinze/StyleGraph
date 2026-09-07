@@ -160,16 +160,20 @@ class SearchEngine:
         pool = self.store.run(_COMPLEMENT_POOL, asin=asin, kws=kws,
                               pool=limit * 6)
         # 互补分：评分质量 + 热度，轻度惩罚超低价噪品；性别一致性过滤
+        import re
+
         anchor_t = (anchor.get("title") or "").lower()
+        masc_re = re.compile(r"\bmen('s)?\b|\bboys\b")
+        fem_re = re.compile(r"\bwomen('s)?\b|\bgirls\b")
+        anchor_fem = bool(fem_re.search(anchor_t)) and not masc_re.search(anchor_t)
+        anchor_masc = bool(masc_re.search(anchor_t)) and not fem_re.search(anchor_t)
         scored = []
         for r in pool:
             p = r["product"]
             pt = (p.get("title") or "").lower()
-            if ("women" in anchor_t or "girl" in anchor_t) and (
-                    "men's" in pt or "men " in pt or "boys" in pt):
+            if anchor_fem and masc_re.search(pt):
                 continue
-            if ("men" in anchor_t or "boys" in anchor_t) and (
-                    "women's" in pt or "women " in pt or "girls" in pt):
+            if anchor_masc and fem_re.search(pt):
                 continue
             s = (min((p["rating_count"] or 0) / 2000, 1.0) * 2.0
                  + (p["rating"] or 0) / 2)
