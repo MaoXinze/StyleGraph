@@ -33,14 +33,15 @@ export default function Chat() {
   async function ask(q: string) {
     const question = q.trim()
     if (!question || busy) return
+    const idx = turns.length // 本轮 turn 的下标
     setTurns((t) => [...t, { q: question }])
     setInput('')
     setBusy(true)
     try {
       const a = await api.chat(question)
-      setTurns((t) => [...t, { q: question, a }])
+      setTurns((t) => t.map((x, i) => (i === idx ? { ...x, a } : x)))
     } catch {
-      setTurns((t) => [...t, { q: question, err: '服务暂不可用，请稍后再试' }])
+      setTurns((t) => t.map((x, i) => (i === idx ? { ...x, err: '服务暂不可用，请稍后再试' } : x)))
     } finally {
       setBusy(false)
     }
