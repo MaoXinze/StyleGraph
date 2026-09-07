@@ -1,6 +1,9 @@
-"""一次性修补脚本：为 manifest 中缺失 category_nodes 的记录回填类目。
+"""一次性修补脚本：魔搭 Range 扫描同时回填两类数据（均为幂等增量）：
 
-魔搭 Range 采样（区间带结束边界 + 超时重试 + 增量落盘 + 凑齐即停）。
+1. category_nodes —— manifest 中缺失类目的商品
+2. bought_together —— 所有商品的共购 ASIN 列表（M3 建边数据源）
+
+带结束边界、超时重试、增量落盘、双任务凑齐即停。
 """
 
 import json
@@ -23,8 +26,9 @@ def main() -> None:
     bootstrap_env()
     settings = get_settings()
     records = load_manifest(settings.manifest_path)
-    missing = {asin for asin, r in records.items() if not r.get("category_nodes")}
-    print(f"待补类目：{len(missing)} / {len(records)}", flush=True)
+    missing_cat = {asin for asin, r in records.items() if not r.get("category_nodes")}
+    missing_bt = {asin for asin, r in records.items() if r.get("bought_scanned") is not True}
+    print(f"待补类目 {len(missing_cat)}，待补共购 {len(missing_bt)} / 共 {len(records)}", flush=True)
 
     url = _ms_url(settings)
     size = int(httpx.head(url, timeout=30, follow_redirects=True).headers["content-length"])
@@ -33,32 +37,43 @@ def main() -> None:
     cap = settings.zone_bytes_cap
     stop = threading.Event()
     lock = threading.Lock()
-    stats = {"patched": 0, "t0": time.time()}
+    stats = {"cat": 0, "bt": 0, "t0": time.time()}
 
     def on_row(asin: str, row: dict) -> None:
         with lock:
-            rec = row_to_product(row, settings.min_rating_count)
-            if not (rec and rec["category_nodes"]) or asin not in missing:
+            rec = records.get(asin)
+            if rec is None:
                 return
-            records[asin]["category_nodes"] = rec["category_nodes"]
-            missing.discard(asin)
-            stats["patched"] += 1
-            if stats["patched"] % 1000 == 0:
-                save_manifest(settings.manifest_path, records)  # 增量落盘
-                el = time.time() - stats["t0"]
-                print(f"已补 {stats['patched']}，剩余 {len(missing)}，{el:.0f}s", flush=True)
-            if not missing:
+            if rec.get("bought_scanned") is not True:
+                bt = row.get("bought_together")
+                rec["bought_together"] = bt if isinstance(bt, list) else []
+                rec["bought_scanned"] = True
+                stats["bt"] += 1
+                missing_bt.discard(asin)
+            if asin in missing_cat:
+                cand = row_to_product(row, settings.min_rating_count)
+                if cand and cand["category_nodes"]:
+                    rec["category_nodes"] = cand["category_nodes"]
+                    missing_cat.discard(asin)
+                    stats["cat"] += 1
+            total = stats["cat"] + stats["bt"]
+            if total and total % 2000 == 0:
+                save_manifest(settings.manifest_path, records)
+                print(f"类目 {stats['cat']} / 共购 {stats['bt']}，"
+                      f"剩 类目{len(missing_cat)} 共购{len(missing_bt)}，{time.time()-stats['t0']:.0f}s", flush=True)
+            if not missing_cat and not missing_bt:
+                save_manifest(settings.manifest_path, records)
                 stop.set()
                 print(f"全部补齐！耗时 {time.time()-stats['t0']:.0f}s", flush=True)
 
     def worker(off: int) -> None:
         headers = {"Range": f"bytes={off}-{off + cap - 1}", "User-Agent": "mmkg-ingest/0.1"}
-        for attempt in (1, 2):  # 区间级超时重试一次
+        for attempt in (1, 2):
             if stop.is_set():
                 return
             try:
                 with httpx.stream("GET", url, headers=headers,
-                                  timeout=httpx.Timeout(60, connect=15),
+                                  timeout=httpx.Timeout(120, connect=30),
                                   follow_redirects=True) as r:
                     if r.status_code not in (200, 206):
                         return
@@ -72,14 +87,14 @@ def main() -> None:
                         buf = lines.pop()
                         for raw in lines:
                             if first:
-                                first = False  # 区间起点的半行丢弃
+                                first = False
                                 continue
                             try:
                                 row = json.loads(raw)
                             except json.JSONDecodeError:
                                 continue
                             asin = row.get("parent_asin") or row.get("asin")
-                            if asin in missing:
+                            if asin in records:
                                 on_row(asin, row)
                 return
             except httpx.HTTPError as e:
@@ -95,7 +110,8 @@ def main() -> None:
             break
 
     save_manifest(settings.manifest_path, records)
-    print(f"结束：补齐 {stats['patched']}，剩余缺失 {len(missing)}，总耗时 {time.time()-stats['t0']:.0f}s", flush=True)
+    print(f"结束：类目补 {stats['cat']}（剩 {len(missing_cat)}），"
+          f"共购补 {stats['bt']}（剩 {len(missing_bt)}），总耗时 {time.time()-stats['t0']:.0f}s", flush=True)
 
 
 if __name__ == "__main__":

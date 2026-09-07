@@ -143,6 +143,61 @@ def status() -> None:
     console.print(table)
 
 
+@app.command()
+def embed(
+    limit: int = typer.Option(None, help="本次最多编码多少商品（默认全部 pending）"),
+) -> None:
+    """CLIP 图文向量编码 → Neo4j 向量索引（本地 GPU）。"""
+    from mmkg.embeddings import run_embed
+
+    settings = _settings()
+    payload = run_embed(settings, limit=limit)
+    console.print(f"[green]embed 完成[/green]：{payload['embedded']} 成功 / {payload['failed']} 失败"
+                  f" · {payload['dim']}维@{payload['device']} · {payload['elapsed_sec']}s")
+
+
+@app.command()
+def extract(
+    limit: int = typer.Option(None, help="本次最多抽取多少商品（默认全部 pending）"),
+    concurrency: int = typer.Option(None, help="并发数（默认 8）"),
+    model: str = typer.Option(None, help="VLM 模型名（默认取配置 vlm_model）"),
+) -> None:
+    """VLM 属性抽取 → AttributeValue/Occasion 节点 + HAS_ATTRIBUTE/SUITABLE_FOR 边。"""
+    from mmkg.extraction import run_extract
+
+    settings = _settings()
+    if model:
+        settings.vlm_model = model
+    payload = run_extract(settings, limit=limit, concurrency=concurrency)
+    u = payload["usage"]
+    console.print(f"[green]extract 完成[/green]：ok={payload['ok']} failed={payload['failed']}"
+                  f" no_image={payload['no_image']} · 调用 {u['calls']} 次"
+                  f"（tokens {u['prompt_tokens']}+{u['completion_tokens']}）· {payload['elapsed_sec']}s")
+
+
+@app.command("build-relations")
+def build_relations_cmd() -> None:
+    """从 bought_together 构建 CO_PURCHASED + 类目亲和边（客观信号，无需 VLM）。"""
+    from mmkg.relations import run_relations
+
+    settings = _settings()
+    payload = run_relations(settings)
+    console.print(f"[green]relations 完成[/green]：共购对 {payload['co_purchase_pairs']}"
+                  f" · 类目亲和边 {payload['affinity_edges']} · {payload['elapsed_sec']}s")
+
+
+@app.command()
+def serve(
+    port: int = typer.Option(8000, help="API 端口"),
+) -> None:
+    """启动 StyleGraph API 服务（uvicorn）。"""
+    import uvicorn
+
+    _settings()
+    console.print(f"StyleGraph API: http://localhost:{port}/docs")
+    uvicorn.run("mmkg.api.app:app", host="0.0.0.0", port=port)
+
+
 def main() -> None:
     app()
 
