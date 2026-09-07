@@ -10,6 +10,16 @@ interface Turn {
 
 const SUGGESTIONS = ['约会穿什么好看，预算500', '夏天通勤穿什么', '送妈妈什么配饰合适', '户外徒步装备']
 
+function TypingDots() {
+  return (
+    <div className="flex items-center gap-1.5 rounded-2xl rounded-bl-sm border border-line-soft bg-white px-4 py-3">
+      {[0, 1, 2].map((i) => (
+        <span key={i} className="typing-dot h-1.5 w-1.5 rounded-full bg-brand-mid" />
+      ))}
+    </div>
+  )
+}
+
 export default function Chat() {
   const [turns, setTurns] = useState<Turn[]>([])
   const [input, setInput] = useState('')
@@ -18,7 +28,7 @@ export default function Chat() {
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [turns])
+  }, [turns, busy])
 
   async function ask(q: string) {
     const question = q.trim()
@@ -37,18 +47,20 @@ export default function Chat() {
   }
 
   return (
-    <div className="mx-auto flex max-w-3xl flex-col" style={{ height: 'calc(100svh - 180px)' }}>
-      <div className="flex-1 space-y-6 overflow-y-auto pb-4">
+    <div className="mx-auto flex max-w-3xl flex-col" style={{ height: 'calc(100svh - 200px)' }}>
+      <div className="flex-1 space-y-7 overflow-y-auto pb-4">
         {turns.length === 0 && (
-          <div className="pt-16 text-center">
-            <h1 className="text-xl font-semibold text-ink">说说你的需求，我来挑</h1>
+          <div className="rise pt-20 text-center">
+            <h1 className="text-[22px] font-semibold tracking-tight text-ink">
+              说说你的需求，我来挑
+            </h1>
             <p className="mt-2 text-sm text-ink-soft">从场景、预算、风格任意角度描述</p>
-            <div className="mt-6 flex flex-wrap justify-center gap-2">
+            <div className="mt-7 flex flex-wrap justify-center gap-2">
               {SUGGESTIONS.map((s) => (
                 <button
                   key={s}
                   onClick={() => ask(s)}
-                  className="rounded-full border border-line bg-white px-3 py-1.5 text-xs text-ink-soft hover:border-brand hover:text-brand"
+                  className="rounded-full border border-line bg-white px-3.5 py-1.5 text-xs text-ink-soft transition-colors hover:border-brand-mid hover:text-brand"
                 >
                   {s}
                 </button>
@@ -58,15 +70,15 @@ export default function Chat() {
         )}
 
         {turns.map((t, i) => (
-          <div key={i} className="space-y-3">
+          <div key={i} className="rise space-y-4">
             <div className="flex justify-end">
-              <div className="max-w-[80%] rounded-2xl rounded-br-sm bg-brand px-4 py-2.5 text-sm text-white">
+              <div className="max-w-[80%] rounded-2xl rounded-br-md bg-brand px-4 py-2.5 text-sm leading-6 text-white">
                 {t.q}
               </div>
             </div>
             {t.a && (
-              <div className="space-y-3">
-                <div className="max-w-[85%] rounded-2xl rounded-bl-sm border border-line bg-white px-4 py-3 text-sm leading-6 text-ink">
+              <div className="space-y-4">
+                <div className="max-w-[85%] rounded-2xl rounded-bl-md border border-line-soft bg-white px-4 py-3 text-sm leading-6 text-ink shadow-card">
                   {t.a.answer}
                 </div>
                 {t.a.products.length > 0 && (
@@ -75,16 +87,25 @@ export default function Chat() {
                       <Link
                         key={p.asin}
                         to={`/product/${p.asin}`}
-                        className="w-40 shrink-0 overflow-hidden rounded-lg border border-line bg-white hover:shadow-md"
+                        className="w-40 shrink-0 overflow-hidden rounded-xl border border-line-soft bg-white shadow-card transition-all hover:-translate-y-0.5 hover:shadow-lift"
                       >
-                        <div className="aspect-square bg-stone-100">
+                        <div className="aspect-square overflow-hidden bg-line-soft">
                           {p.image_url && (
-                            <img src={`/img/${p.asin}.jpg`} alt="" loading="lazy" className="h-full w-full object-cover" />
+                            <img
+                              src={`/img/${p.asin}.jpg`}
+                              alt=""
+                              loading="lazy"
+                              className="h-full w-full object-cover"
+                            />
                           )}
                         </div>
-                        <div className="space-y-1 p-2">
-                          <div className="line-clamp-2 text-[12px] leading-4 text-ink">{p.title}</div>
-                          <div className="text-xs font-semibold text-brand">{priceText(p.price)}</div>
+                        <div className="space-y-1 p-2.5">
+                          <div className="line-clamp-2 text-[12px] leading-4 text-ink">
+                            {p.title}
+                          </div>
+                          <div className="text-xs font-semibold text-brand-deep">
+                            {priceText(p.price)}
+                          </div>
                         </div>
                       </Link>
                     ))}
@@ -95,25 +116,27 @@ export default function Chat() {
             {t.err && <p className="text-sm text-red-700">{t.err}</p>}
           </div>
         ))}
-        {busy && <p className="text-sm text-ink-soft">正在检索图谱并生成建议…</p>}
+        {busy && <TypingDots />}
         <div ref={endRef} />
       </div>
 
-      <div className="sticky bottom-0 flex gap-2 border-t border-line bg-paper pt-3">
-        <input
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && ask(input)}
-          placeholder="输入你的需求…"
-          className="flex-1 rounded-lg border border-line bg-white px-4 py-2.5 text-sm outline-none focus:border-brand"
-        />
-        <button
-          onClick={() => ask(input)}
-          disabled={busy || !input.trim()}
-          className="rounded-lg bg-brand px-5 py-2.5 text-sm font-medium text-white disabled:opacity-40"
-        >
-          发送
-        </button>
+      <div className="sticky bottom-0 bg-paper pt-3">
+        <div className="flex items-center gap-2 rounded-2xl border border-line bg-white p-1.5 shadow-card transition-shadow focus-within:border-brand-mid focus-within:shadow-lift">
+          <input
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && ask(input)}
+            placeholder="输入你的需求…"
+            className="min-w-0 flex-1 bg-transparent px-3 py-2 text-sm outline-none placeholder:text-ink-faint"
+          />
+          <button
+            onClick={() => ask(input)}
+            disabled={busy || !input.trim()}
+            className="shrink-0 rounded-xl bg-brand px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-brand-deep disabled:cursor-not-allowed disabled:opacity-35"
+          >
+            发送
+          </button>
+        </div>
       </div>
     </div>
   )
