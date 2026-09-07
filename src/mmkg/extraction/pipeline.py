@@ -59,7 +59,7 @@ def run_extract(settings: Settings | None = None, limit: int | None = None,
                 concurrency: int | None = None, qc_sample: int = 200) -> dict:
     settings = settings or get_settings()
     concurrency = concurrency or 8
-    client = LLMClient(settings)  # 默认 vlm_model
+    client = LLMClient(settings, provider="vlm")  # 看图抽取走百炼 VLM
     t0 = time.perf_counter()
     ok = failed = no_image = 0
     qc_rows: list[dict] = []

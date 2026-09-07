@@ -1,4 +1,4 @@
-"""百炼（DashScope）OpenAI 兼容客户端：VLM/LLM 统一入口。
+"""LLM/VLM OpenAI 兼容客户端：DeepSeek（纯文本）与百炼（看图）统一入口。
 
 - 重试与 429 退避；JSON 输出自动剥壳解析
 - usage 统计供运行报告与成本核算
@@ -20,10 +20,18 @@ _JSON_RE = re.compile(r"\{.*\}", re.DOTALL)
 
 
 class LLMClient:
-    def __init__(self, settings: Settings, model: str | None = None):
-        self.client = OpenAI(api_key=settings.dashscope_api_key,
-                             base_url=settings.dashscope_base_url, timeout=60)
-        self.model = model or settings.vlm_model
+    def __init__(self, settings: Settings, model: str | None = None,
+                 provider: str = "llm"):
+        """provider: "llm"（DeepSeek 纯文本）或 "vlm"（看图，可配百炼/DeepSeek）。"""
+        if provider == "llm":
+            api_key, base_url = settings.llm_api_key, settings.llm_base_url
+            default_model = settings.llm_model
+        else:
+            api_key = settings.vlm_api_key or settings.llm_api_key
+            base_url = settings.vlm_base_url
+            default_model = settings.vlm_model
+        self.client = OpenAI(api_key=api_key, base_url=base_url, timeout=60)
+        self.model = model or default_model
         self.usage = {"calls": 0, "prompt_tokens": 0, "completion_tokens": 0, "errors": 0}
 
     def chat_json(self, system: str, user_text: str,

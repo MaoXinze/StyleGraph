@@ -168,7 +168,7 @@ class SearchEngine:
     def chat(self, question: str) -> dict:
         from mmkg.llm import LLMClient
 
-        client = LLMClient(self.settings, model=self.settings.llm_model)
+        client = LLMClient(self.settings)  # DeepSeek 纯文本（意图解析 + 生成回答）
         intent = client.chat_json(_INTENT_SYSTEM, question) or {}
 
         rows = self.store.run(

@@ -41,11 +41,15 @@ def bootstrap_env() -> Path:
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(extra="ignore")
 
-    # —— 模型服务（百炼 DashScope，OpenAI 兼容）——
-    dashscope_api_key: str = ""
-    dashscope_base_url: str = "https://dashscope.aliyuncs.com/compatible-mode/v1"
-    vlm_model: str = "qwen-vl-plus"
-    llm_model: str = "qwen-plus"
+    # —— LLM 服务（DeepSeek，OpenAI 兼容；纯文本：问答/意图解析/QC）——
+    llm_api_key: str = ""
+    llm_base_url: str = "https://api.deepseek.com"
+    llm_model: str = "deepseek-v4-flash"
+
+    # —— VLM 服务（默认 DeepSeek 视觉实验模型：看图属性抽取；可切回百炼）——
+    vlm_api_key: str = ""  # 留空回退 llm_api_key（同一服务商时免重复填）
+    vlm_base_url: str = "https://api.deepseek.com"
+    vlm_model: str = "deepseek-v4-flash-vision-exp"
 
     # —— 图数据库 ——
     neo4j_uri: str = "bolt://localhost:7687"
