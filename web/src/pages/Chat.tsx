@@ -12,7 +12,7 @@ const SUGGESTIONS = ['约会穿什么好看，预算500', '夏天通勤穿什么
 
 function TypingDots() {
   return (
-    <div className="flex items-center gap-1.5 rounded-2xl rounded-bl-sm border border-line-soft bg-white px-4 py-3">
+    <div className="flex items-center gap-1.5 rounded-2xl border border-line-soft bg-white px-4 py-3">
       {[0, 1, 2].map((i) => (
         <span key={i} className="typing-dot h-1.5 w-1.5 rounded-full bg-brand-mid" />
       ))}
@@ -90,13 +90,13 @@ export default function Chat() {
         {turns.map((t, i) => (
           <div key={i} className="rise space-y-4">
             <div className="flex justify-end">
-              <div className="max-w-[80%] rounded-2xl rounded-br-md bg-brand px-4 py-2.5 text-sm leading-6 text-white">
+              <div className="max-w-[80%] rounded-2xl bg-brand px-4 py-2.5 text-sm leading-6 text-white">
                 {t.q}
               </div>
             </div>
             {t.a && (
               <div className="space-y-4">
-                <div className="max-w-[85%] rounded-2xl rounded-bl-md border border-line-soft bg-white px-4 py-3 text-sm leading-6 text-ink shadow-card">
+                <div className="max-w-[85%] rounded-2xl border border-line-soft bg-white px-4 py-3 text-sm leading-6 text-ink shadow-card">
                   {t.a.answer}
                 </div>
                 {t.a.products.length > 0 && (
