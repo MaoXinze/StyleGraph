@@ -12,15 +12,32 @@ const TABS = [
   { to: '/admin', label: '图谱总览' },
 ]
 
+/** 图谱标记：核心节点 + 邻域连线 */
+function Logo({ size = 30 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 32 32" aria-hidden>
+      <rect width="32" height="32" rx="8" fill="#1c1917" />
+      <path
+        d="M16 7.5L7.5 21M16 7.5L24.5 21M7.5 21h17M16 7.5v13.5M12 21l8-9.5M20 21l-8-9.5"
+        stroke="#c2410c"
+        strokeWidth="1"
+        opacity="0.38"
+      />
+      <circle cx="16" cy="7.5" r="2.6" fill="#f97316" />
+      <circle cx="7.5" cy="21" r="2.1" fill="#c2410c" />
+      <circle cx="24.5" cy="21" r="2.1" fill="#c2410c" />
+      <circle cx="16" cy="21" r="1.6" fill="#fff1e7" />
+    </svg>
+  )
+}
+
 export default function App() {
   return (
     <div className="mx-auto flex min-h-svh max-w-6xl flex-col">
       <header className="sticky top-0 z-10 border-b border-line-soft bg-paper/85 backdrop-blur-md">
-        <div className="flex items-center gap-8 px-6 py-3.5">
+        <div className="flex items-center gap-8 px-6 py-3">
           <NavLink to="/" className="flex items-center gap-2.5">
-            <span className="flex h-7 w-7 items-center justify-center rounded-md bg-brand text-[13px] font-bold text-white">
-              S
-            </span>
+            <Logo />
             <span className="text-[15px] font-semibold tracking-tight text-ink">
               StyleGraph
             </span>
@@ -59,7 +76,10 @@ export default function App() {
         </Routes>
       </main>
       <footer className="border-t border-line-soft px-6 py-4 text-xs text-ink-faint">
-        StyleGraph · 电商多模态知识图谱 · Neo4j + CLIP ViT-B-32
+        <div className="flex items-center justify-between">
+          <span>StyleGraph · 电商多模态知识图谱 · Neo4j + CLIP ViT-B-32</span>
+          <Logo size={20} />
+        </div>
       </footer>
     </div>
   )

@@ -47,6 +47,25 @@ def stats():
     return {"nodes": store.counts(), "rels": store.rel_counts(), "server": store.server_info()}
 
 
+@app.get("/api/products/featured")
+def featured(limit: int = Query(10, le=24)):
+    """精选商品：高评分高热度，用于首页橱窗。注意必须先于 /{asin} 路由声明。"""
+    return {
+        "products": [
+            r["product"]
+            for r in app.state.engine.store.run(
+                """
+                MATCH (p:Product)
+                WHERE p.image_url IS NOT NULL AND p.rating_count >= 100
+                RETURN p{.asin, .title, .price, .rating, .rating_count, .image_url, .store} AS product
+                ORDER BY p.rating_count DESC LIMIT $limit
+                """,
+                limit=limit,
+            )
+        ]
+    }
+
+
 @app.get("/api/products/{asin}")
 def product_detail(asin: str):
     rows = app.state.engine.store.run(

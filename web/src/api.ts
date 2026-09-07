@@ -50,6 +50,9 @@ export const api = {
   stats: () =>
     fetch('/api/stats').then((r) => json<{ nodes: Record<string, number>; rels: Record<string, number> }>(r)),
 
+  featured: (limit = 10) =>
+    fetch(`/api/products/featured?limit=${limit}`).then((r) => json<{ products: ProductCard[] }>(r)),
+
   product: <T = Record<string, unknown>>(asin: string) =>
     fetch(`/api/products/${asin}`).then((r) => json<T>(r)),
 
