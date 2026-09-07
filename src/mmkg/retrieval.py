@@ -28,24 +28,36 @@ RETURN node{.asin, .title, .price, .rating, .rating_count, .image_url, .store} A
        score ORDER BY score DESC LIMIT $k
 """
 
-# 搭配推荐：直接共购 + 类目亲和两跳扩展，Python 侧融合排序
+# 搭配推荐（三层融合）：① SIMILAR_TO 同风格相似款 ② 跨类目互补配饰（title 关键词 + 高评分）
+# ③ 未来 CO_PURCHASED 数据到位后加权（当前数据集该字段全 null）
 _RECO_ANCHOR = """
 MATCH (p:Product {asin: $asin})
-OPTIONAL MATCH (p)-[co:CO_PURCHASED]-(cp:Product)
-WITH p, coalesce(collect(DISTINCT cp.asin), []) AS copurchase
-RETURN p{.*} AS anchor, copurchase
+RETURN p{.*} AS anchor
 """
 
-_RECO_AFFINITY = """
-MATCH (p:Product {asin: $asin})-[:IN_CATEGORY]->(c:Category {level:2})
-MATCH (c)-[aff:CAT_AFFINITY]->(c2:Category {level:2})
-WHERE c2.id <> c.id
-MATCH (cand:Product)-[:IN_CATEGORY]->(c2)
-WHERE cand.rating_count >= 5 AND cand.embed_status = 'ok'
-RETURN c2.name AS cat, aff.weight AS affw,
-       cand{.*} AS product
-ORDER BY affw DESC, cand.rating_count DESC
-LIMIT $pool
+_SIMILAR_ITEMS = """
+MATCH (p:Product {asin: $asin})-[s:SIMILAR_TO]->(sp:Product)
+RETURN sp{.asin, .title, .price, .rating, .rating_count, .image_url, .store} AS product,
+       s.score AS score
+ORDER BY s.score DESC LIMIT $limit
+"""
+
+_COMPLEMENT_POOL = """
+MATCH (p:Product {asin: $asin})-[:IN_CATEGORY]->(c)
+WITH p, collect(c) AS anchor_cats
+MATCH (cand:Product)-[:IN_CATEGORY]->(cc)
+WHERE NONE(x IN anchor_cats WHERE x = cc)
+  AND any(kw IN $kws WHERE toLower(cand.title) CONTAINS kw)
+  AND cand.rating_count >= 20
+RETURN cand{.asin, .title, .price, .rating, .rating_count, .image_url, .store} AS product
+ORDER BY cand.rating_count DESC LIMIT $pool
+"""
+
+_CO_PURCHASED_ITEMS = """
+MATCH (p:Product {asin: $asin})-[r:CO_PURCHASED]-(cp:Product)
+RETURN cp{.asin, .title, .price, .rating, .rating_count, .image_url, .store} AS product,
+       r.weight AS score
+ORDER BY r.weight DESC LIMIT $limit
 """
 
 _INTENT_SYSTEM = """你是电商导购查询理解引擎。把用户的中文自然语言解析为 JSON 查询意图，只输出 JSON：
@@ -132,39 +144,58 @@ class SearchEngine:
     # —— 搭配推荐 ——
 
     def recommend_outfit(self, asin: str, limit: int = 5) -> dict:
-        anchor_row = self.store.run(_RECO_ANCHOR, asin=asin)
-        if not anchor_row:
+        anchor_rows = self.store.run(_RECO_ANCHOR, asin=asin)
+        if not anchor_rows:
             raise ValueError(f"商品不存在: {asin}")
-        anchor, copurchase = anchor_row[0]["anchor"], set(anchor_row[0]["copurchase"])
+        anchor = anchor_rows[0]["anchor"]
 
-        pool = self.store.run(_RECO_AFFINITY, asin=asin, pool=limit * 12)
-        scored: dict[str, dict] = {}
+        # ① 同风格相似款
+        similar = [{"product": r["product"], "score": round(r["score"], 3),
+                    "kind": "similar"}
+                   for r in self.store.run(_SIMILAR_ITEMS, asin=asin, limit=limit)]
+
+        # ② 跨类目互补配饰（鞋/包/首饰/表/围巾/腰带/墨镜）
+        kws = ["handbag", "purse", "shoe", "sandal", "heel", "boot", "watch",
+               "necklace", "earring", "bracelet", "scarf", "belt", "sunglass"]
+        pool = self.store.run(_COMPLEMENT_POOL, asin=asin, kws=kws,
+                              pool=limit * 6)
+        # 互补分：评分质量 + 热度，轻度惩罚超低价噪品；性别一致性过滤
+        anchor_t = (anchor.get("title") or "").lower()
+        scored = []
         for r in pool:
             p = r["product"]
-            aid = p["asin"]
-            s = min(r["affw"] / 30.0, 3.0) + (p["rating"] or 0) / 2 + min((p["rating_count"] or 0) / 2000, 1.0)
-            if aid in copurchase:
-                s += 4.0  # 直接共购强加权
-            cur = scored.get(aid)
-            if cur is None or s > cur["score"]:
-                scored[aid] = {"product": {k: p.get(k) for k in
-                                           ("asin", "title", "price", "rating", "rating_count",
-                                            "image_url", "store")},
-                               "category": r["cat"], "score": round(s, 3),
-                               "co_purchased": aid in copurchase}
-        items = sorted(scored.values(), key=lambda x: -x["score"])
-        picked, seen_cats = [], {}
-        for item in items:  # 类目多样性：每个目标类目最多 2 件
-            c = item["category"]
-            if seen_cats.get(c, 0) >= 2:
+            pt = (p.get("title") or "").lower()
+            if ("women" in anchor_t or "girl" in anchor_t) and (
+                    "men's" in pt or "men " in pt or "boys" in pt):
                 continue
-            seen_cats[c] = seen_cats.get(c, 0) + 1
-            picked.append(item)
-            if len(picked) >= limit:
+            if ("men" in anchor_t or "boys" in anchor_t) and (
+                    "women's" in pt or "women " in pt or "girls" in pt):
+                continue
+            s = (min((p["rating_count"] or 0) / 2000, 1.0) * 2.0
+                 + (p["rating"] or 0) / 2)
+            scored.append({"product": p, "score": round(s, 3), "kind": "complement"})
+        complement = sorted(scored, key=lambda x: -x["score"])[:limit]
+
+        # ③ 共购强加权位（CO_PURCHASED 数据到位后自动生效）
+        co = self.store.run(_CO_PURCHASED_ITEMS, asin=asin, limit=limit)
+        copurchase = [{"product": r["product"], "score": 4.0 + round(r.get("score") or 0, 3),
+                       "kind": "co_purchased"} for r in co]
+
+        merged = copurchase + similar + complement
+        # 去重（同商品保留 kind 优先级最高的），限制总数
+        seen: set[str] = set()
+        items = []
+        for it in merged:
+            a = it["product"].get("asin")
+            if a in seen:
+                continue
+            seen.add(a)
+            items.append(it)
+            if len(items) >= limit * 2:
                 break
         return {"anchor": {k: anchor.get(k) for k in
                            ("asin", "title", "price", "rating", "image_url", "store")},
-                "items": picked}
+                "items": items}
 
     # —— GraphRAG 问答 ——
 
