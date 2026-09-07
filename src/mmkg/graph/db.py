@@ -32,6 +32,11 @@ class Neo4jStore:
         with self._driver.session(database=self._database) as s:
             return [r.data() for r in s.run(cypher, **params)]
 
+    def run_raw(self, cypher: str, **params: Any) -> list[Any]:
+        """同 run，但保留驱动原始 Record（节点/关系对象带 element_id/labels 等方法）。"""
+        with self._driver.session(database=self._database) as s:
+            return list(s.run(cypher, **params))
+
     def write_batch(self, cypher: str, rows: Iterable[dict], batch_size: int = 500) -> int:
         """分批 UNWIND 写入，返回处理的行数。cypher 中用 $rows 引用批数据。"""
         total = 0

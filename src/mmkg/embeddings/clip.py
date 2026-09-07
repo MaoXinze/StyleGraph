@@ -16,11 +16,15 @@ log = logging.getLogger(__name__)
 class ClipEncoder:
     def __init__(self, model_name: str = "ViT-B-32", pretrained: str = "openai",
                  device: str | None = None):
+        from mmkg.config import get_settings
+
         import open_clip
 
         self.device = device or ("cuda" if torch.cuda.is_available() else "cpu")
+        cache_dir = get_settings().clip_cache_dir
+        cache_dir.mkdir(parents=True, exist_ok=True)
         self.model, _, self.preprocess = open_clip.create_model_and_transforms(
-            model_name, pretrained=pretrained)
+            model_name, pretrained=pretrained, cache_dir=str(cache_dir))
         self.model = self.model.to(self.device).eval()
         self.tokenizer = open_clip.get_tokenizer(model_name)
         self.dim = self.model.embed_dim

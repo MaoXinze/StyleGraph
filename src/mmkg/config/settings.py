@@ -86,6 +86,11 @@ class Settings(BaseSettings):
         return self.data_dir / "cache"
 
     @property
+    def clip_cache_dir(self) -> Path:
+        """CLIP 权重缓存（open_clip 默认写到 C 盘 ~/.cache/clip，统一重定向到 D 盘项目内）。"""
+        return self.cache_dir / "clip"
+
+    @property
     def runs_dir(self) -> Path:
         return find_project_root() / "docs" / "runs"
 

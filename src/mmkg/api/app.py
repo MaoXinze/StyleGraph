@@ -50,7 +50,7 @@ def product_detail(asin: str):
         OPTIONAL MATCH (p)-[:HAS_BRAND]->(b:Brand)
         OPTIONAL MATCH (p)-[:IN_CATEGORY]->(c:Category)
         OPTIONAL MATCH (p)-[r:CO_PURCHASED]-(cp:Product)
-        WITH p, b, collect(DISTINCT c){.name, .level} AS cats,
+        WITH p, b, collect(DISTINCT c{.name, .level}) AS cats,
              collect(DISTINCT {asin: cp.asin, title: cp.title, price: cp.price,
                                image_url: cp.image_url, w: r.weight})[0..8] AS copurchase
         OPTIONAL MATCH (p)-[:HAS_ATTRIBUTE]->(a:AttributeValue)
@@ -106,7 +106,7 @@ def chat(req: ChatRequest):
 @app.get("/api/graph/explore")
 def graph_explore(asin: str):
     """商品邻域子图（品牌/类目树/共购/属性/场合），纯 Cypher 实现（不依赖 APOC）。"""
-    rows = app.state.engine.store.run(
+    rows = app.state.engine.store.run_raw(
         """
         MATCH (p:Product {asin: $asin})
         OPTIONAL MATCH (p)-[r1:HAS_BRAND|IN_CATEGORY|CO_PURCHASED|HAS_ATTRIBUTE|SUITABLE_FOR]-(n1)
@@ -133,8 +133,10 @@ def graph_explore(asin: str):
     rels: dict[str, dict] = {}
 
     def add_node(n) -> None:
+        if n is None or not hasattr(n, "labels"):  # tree_items 混有 Relationship，跳过
+            return
         eid = n.element_id
-        if eid in nodes or n is None:
+        if eid in nodes:
             return
         label = next((l for l in ("Product", "Brand", "Category", "AttributeValue", "Occasion")
                       if l in n.labels), None)

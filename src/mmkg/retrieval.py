@@ -100,9 +100,17 @@ class SearchEngine:
     def close(self):
         self.store.close()
 
+    def _embed_ready(self) -> bool:
+        """向量索引是否有数据（避免向量未就绪时触发 CLIP 懒加载/权重下载而挂起）。"""
+        rows = self.store.run(
+            "MATCH (p:Product {embed_status:'ok'}) WITH count(p) AS c LIMIT 1 RETURN c")
+        return bool(rows and rows[0].get("c"))
+
     # —— 检索 ——
 
     def visual_search(self, image_bytes: bytes, top_k: int = 20) -> list[dict]:
+        if not self._embed_ready():
+            raise ValueError("向量索引未就绪：先运行 `uv run mmkg embed` 完成编码")
         tmp = Path(tempfile.gettempdir()) / "mmkg_query.jpg"
         tmp.write_bytes(image_bytes)
         vec = self.encoder.encode_images([tmp])[0]
@@ -112,6 +120,9 @@ class SearchEngine:
                               facet_key=None)
 
     def text_search(self, query: str, top_k: int = 12) -> list[dict]:
+        if not self._embed_ready():
+            log.info("向量索引未就绪（embed_ok=0），文本检索返回空结果")
+            return []
         vec = self.encoder.encode_texts([query])[0]
         return self.store.run(_TEXT_SEARCH, vec=vec, k=top_k)
 
@@ -167,7 +178,7 @@ class SearchEngine:
             price_min=intent.get("price_min"), price_max=intent.get("price_max"),
             keywords=[k.lower() for k in (intent.get("keywords") or [])],
         )
-        if not rows:  # 属性过滤无结果 → 向量文本召回兜底
+        if not rows and self._embed_ready():  # 属性过滤无结果 → 向量文本召回兜底
             vec = self.encoder.encode_texts([question])[0]
             rows = self.store.run(_FALLBACK_TEXT_QUERY, vec=vec)
 
