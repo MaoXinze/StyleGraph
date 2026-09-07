@@ -24,3 +24,6 @@ runs/
 
 # ZCode 会话产物
 .zcode/
+
+# WorkBuddy 工作记忆（本地）
+.workbuddy/
