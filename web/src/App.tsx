@@ -42,17 +42,17 @@ export default function App() {
               StyleGraph
             </span>
           </NavLink>
-          <nav className="flex items-center gap-0.5 text-sm">
+          <nav className="flex flex-1 items-stretch justify-center text-sm">
             {TABS.map((t) => (
               <NavLink
                 key={t.to}
                 to={t.to}
                 end={t.to === '/'}
                 className={({ isActive }) =>
-                  `relative rounded-md px-3 py-1.5 transition-colors ${
+                  `relative flex-1 px-4 py-1.5 text-center transition-colors ${
                     isActive
-                      ? 'bg-ink font-medium text-paper'
-                      : 'text-ink-soft hover:bg-line-soft hover:text-ink'
+                      ? 'font-medium text-brand after:absolute after:inset-x-6 after:bottom-0.5 after:h-0.5 after:rounded-full after:bg-brand'
+                      : 'text-ink-soft hover:text-ink'
                   }`
                 }
               >
