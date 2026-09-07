@@ -28,7 +28,7 @@ LIMIT $limit
 _WRITE_ATTR = """
 UNWIND $rows AS row
 MATCH (p:Product {asin: row.asin})
-SET p.attr_status = 'ok', p.attributes = row.attrs
+SET p.attr_status = 'ok', p.attributes = row.attrs_json
 WITH p, row
 UNWIND (CASE WHEN size(row.attr_values) > 0 THEN row.attr_values ELSE [null] END) AS av
 FOREACH (_ IN CASE WHEN av IS NOT NULL THEN [1] ELSE [] END |
@@ -51,7 +51,8 @@ def _to_graph_rows(asin: str, attrs: ProductAttributes, model: str) -> dict:
         value = getattr(attrs, facet)
         if value:
             attr_values.append({"key": f"{facet}:{value}", "facet": facet, "value": value})
-    return {"asin": asin, "attrs": attrs.model_dump(), "attr_values": attr_values,
+    # Neo4j 属性不支持 Map，结构化详情存 JSON 字符串（结构化检索走 HAS_ATTRIBUTE 边）
+    return {"asin": asin, "attrs_json": attrs.model_dump_json(), "attr_values": attr_values,
             "occasions": attrs.occasion, "model": model}
 
 
@@ -107,12 +108,12 @@ def run_extract(settings: Settings | None = None, limit: int | None = None,
                     failed += 1
                     batch.append({"asin": asin, "status": "failed"})
                 if len(batch) >= settings.graph_batch_size:
-                    store.write_batch(_WRITE_ATTR, [r for r in batch if "attrs" in r])
+                    store.write_batch(_WRITE_ATTR, [r for r in batch if "attrs_json" in r])
                     store.write_batch(_MARK, [r for r in batch if "status" in r])
                     log.info("进度 ok=%d failed=%d no_image=%d", ok, failed, no_image)
                     batch = []
         if batch:
-            store.write_batch(_WRITE_ATTR, [r for r in batch if "attrs" in r])
+            store.write_batch(_WRITE_ATTR, [r for r in batch if "attrs_json" in r])
             store.write_batch(_MARK, [r for r in batch if "status" in r])
 
     from mmkg.ingest.pipeline import write_run_report
