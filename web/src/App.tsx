@@ -33,7 +33,7 @@ function Logo({ size = 30 }: { size?: number }) {
 
 export default function App() {
   return (
-    <div className="mx-auto flex min-h-svh max-w-6xl flex-col">
+    <div className="page-glow mx-auto flex min-h-svh max-w-6xl flex-col">
       <header className="sticky top-0 z-10 border-b border-line-soft bg-paper/85 backdrop-blur-md">
         <div className="flex items-center gap-8 px-6 py-3">
           <NavLink to="/" className="flex items-center gap-2.5">

@@ -62,3 +62,27 @@ body {
 .typing-dot { animation: pulse-dot 1.2s infinite; }
 .typing-dot:nth-child(2) { animation-delay: 0.15s; }
 .typing-dot:nth-child(3) { animation-delay: 0.3s; }
+
+/* 页面氛围背景：顶部双光斑（赭石暖光 + 米金冷光），极低强度 */
+.page-glow {
+  position: relative;
+}
+.page-glow::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(560px 320px at 12% -4%, rgb(194 65 12 / 0.055), transparent 68%),
+    radial-gradient(640px 360px at 88% -6%, rgb(217 119 6 / 0.05), transparent 66%);
+  z-index: 0;
+}
+.page-glow > * { position: relative; z-index: 1; }
+
+/* 细网格纹理（用于上传区等局部装饰） */
+.grid-texture {
+  background-image:
+    linear-gradient(rgb(28 25 23 / 0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(28 25 23 / 0.025) 1px, transparent 1px);
+  background-size: 22px 22px;
+}

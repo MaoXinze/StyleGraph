@@ -50,7 +50,7 @@ export default function Chat() {
     <div className="mx-auto flex max-w-3xl flex-col" style={{ height: 'calc(100svh - 200px)' }}>
       <div className="flex-1 space-y-7 overflow-y-auto pb-4">
         {turns.length === 0 && (
-          <div className="rise pt-20 text-center">
+          <div className="rise pt-16 text-center">
             <h1 className="text-[22px] font-semibold tracking-tight text-ink">
               说说你的需求，我来挑
             </h1>
@@ -64,6 +64,21 @@ export default function Chat() {
                 >
                   {s}
                 </button>
+              ))}
+            </div>
+            <div className="mx-auto mt-10 grid max-w-xl grid-cols-1 gap-3 text-left sm:grid-cols-3">
+              {[
+                { t: '理解意图', d: '自然语言解析为品类、场合、价格区间' },
+                { t: '图谱检索', d: '属性边 + 场景边 + 向量召回混合取数' },
+                { t: '生成建议', d: '结合价格与评分解释推荐理由' },
+              ].map((c) => (
+                <div
+                  key={c.t}
+                  className="rounded-xl border border-line-soft bg-white p-4 shadow-card"
+                >
+                  <div className="text-xs font-medium text-brand">{c.t}</div>
+                  <p className="mt-1.5 text-xs leading-5 text-ink-soft">{c.d}</p>
+                </div>
               ))}
             </div>
           </div>
