@@ -23,12 +23,24 @@ class ClipEncoder:
         self.device = device or ("cuda" if torch.cuda.is_available() else "cpu")
         cache_dir = get_settings().clip_cache_dir
         cache_dir.mkdir(parents=True, exist_ok=True)
+
+        # 本地已有原版权重 → 直接文件路径加载（open_clip 装有 huggingface_hub 时
+        # 会优先走 HF hub 下载并丢弃 url，huggingface.co 在本机不可达会挂死）。
+        # openai 原版激活为 quick_gelu，须用 -quickgelu 配置名，否则激活函数错误。
+        local_weights = cache_dir / f"{model_name}.pt"
+        if pretrained == "openai" and local_weights.is_file():
+            model_name = f"{model_name}-quickgelu"
+            pretrained = str(local_weights)
+            log.info("使用本地权重: %s", local_weights)
+
         self.model, _, self.preprocess = open_clip.create_model_and_transforms(
-            model_name, pretrained=pretrained, cache_dir=str(cache_dir))
+            model_name, pretrained=pretrained, weights_only=False)
+        # weights_only=False：openai 原版 .pt 是 TorchScript archive，
+        # torch>=2.6 默认 weights_only=True 会拒绝；本文件来源可信且已过 sha256 校验
         self.model = self.model.to(self.device).eval()
         self.tokenizer = open_clip.get_tokenizer(model_name)
-        self.dim = self.model.embed_dim
-        log.info("CLIP %s/%s 就绪：%s，维度 %d", model_name, pretrained, self.device, self.dim)
+        self.dim = self.model.visual.output_dim
+        log.info("CLIP %s 就绪：%s，维度 %d", model_name, self.device, self.dim)
 
     @torch.no_grad()
     def encode_images(self, paths: list[Path | None], batch_size: int = 64) -> list[list[float] | None]:
