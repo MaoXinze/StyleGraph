@@ -36,6 +36,16 @@ def health():
     return {"status": "ok"}
 
 
+@app.on_event("startup")
+def mount_images():
+    """本地商品图静态服务（CDN 部分图已 404，本地为权威源）。"""
+    from fastapi.staticfiles import StaticFiles
+
+    images_dir = get_settings().images_dir
+    if images_dir.is_dir():
+        app.mount("/img", StaticFiles(directory=str(images_dir)), name="images")
+
+
 @app.get("/api/stats")
 def stats():
     store = app.state.engine.store
